@@ -1,37 +1,48 @@
-name: generate 3d chart for profile contributions
+name: Update GitHub Profile
 
 on:
-  # run automatically every 24 hours
   schedule:
-    - cron: "0 */24 * * *" 
-  
-  # allows to manually run the job at any time
+    - cron: "0 0 * * *" # Run daily at midnight UTC
   workflow_dispatch:
-  
-  # run on every push on the main branch
-  # don't forget to change if you're using 'master' branch
   push:
     branches:
-    - main
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: generate-github-profile-3d-contrib
     steps:
-      - uses: actions/checkout@v4
-      - uses: yoshi389111/github-profile-3d-contrib@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
-          USERNAME: ${{ github.repository_owner }}
-          SETTING_JSON: conf/github-profile-3d-contrib.json
-          
-      # push the content of <build_dir> to a branch
-      # the content will be available at https://raw.githubusercontent.com/<github_user>/<repository>/<target_branch>/<file> , or as github page
-      - name: push SVGs to the output-3d branch
-        uses: crazy-max/ghaction-github-pages@v3.1.0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate Snake Animation
+        uses: Platane/snk@v3
         with:
-          target_branch: output-3d-contrib
-          build_dir: profile-3d-contrib
+          github_user_name: ${{ github.repository_owner }}
+          outputs: |
+            dist/snake.svg
+            dist/snake-dark.svg?palette=github-dark
+
+      - name: Commit Snake Animation
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add dist/*.svg
+          git commit -m "Update snake animation" || echo "No changes to commit"
+          git push
+
+      - name: Generate 3D Profile Contribution
+        uses: yoshi389111/github-profile-3d-contrib@0.7.1
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.repository_owner }}
+        with:
+          output: profile-3d-contrib/profile-night-rainbow.svg
+
+      - name: Commit 3D Profile
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add profile-3d-contrib/*.svg
+          git commit -m "Update 3D profile contribution" || echo "No changes to commit"
+          git push
